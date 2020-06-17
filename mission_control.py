@@ -163,3 +163,5 @@ if __name__ == '__main__':
     train_data, test_data, train_labels, test_labels = train_test_split(data, label, train_size=0.8)
 
     predict_logistic_regression(train_data, test_data, train_labels, test_labels)
+
+    
