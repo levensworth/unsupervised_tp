@@ -10,6 +10,16 @@ from sklearn.linear_model import LogisticRegression
 import seaborn as sns
 import matplotlib.pyplot as plt
 
+from models.kmeans import KMeans
+import logging
+
+# configure logging library for timestamp format
+logging.basicConfig(
+    format='%(asctime)s %(levelname)-8s %(message)s',
+    level=logging.INFO,
+    datefmt='%Y-%m-%d %H:%M:%S')
+
+
 def load_data(path, separator=',', encoding='utf-8'):
     df = pd.read_csv(path, sep= separator, encoding=encoding)
     return df
@@ -153,7 +163,7 @@ if __name__ == '__main__':
     train_data, test_data, train_labels, test_labels = train_test_split(data, label, train_size=0.8)
 
     # exercise b
-    predict_logistic_regression(train_data, test_data, train_labels, test_labels)
+    # predict_logistic_regression(train_data, test_data, train_labels, test_labels)
 
     # exercise d
     # we add sex to variable
@@ -162,6 +172,7 @@ if __name__ == '__main__':
     data = data.to_numpy()
     train_data, test_data, train_labels, test_labels = train_test_split(data, label, train_size=0.8)
 
-    predict_logistic_regression(train_data, test_data, train_labels, test_labels)
+    # predict_logistic_regression(train_data, test_data, train_labels, test_labels)
 
-    
+    model = KMeans(2, logging)
+    model.fit(train_data, train_labels)
