@@ -13,22 +13,22 @@ class KMeans():
         # initialize centroids based on init_method
         self.init_method = init_method
 
-    def fit(self, train_data, train_labels):
+    def fit(self, train_data, train_labels=None):
         '''
         train model based on the init method and the train data.
         Will iterate over dataset for [max_iters]
         if logger provided => will output iteration values
         Params:
         - train_data: numpy array of (n_obs, variables)
-        - train_labels: list of labels of length n_obs
+        - train_labels: None (api consistency)
         '''
-        possible_labels = set(train_labels)
+        possible_labels = [i for i in range(self.n_classes)]
         self.space_dim = train_data.shape[1]
         classification = []
         self.centroids = []
         # init labels
         for entry in train_data:
-            label = random.choice(list(possible_labels))
+            label = random.choice(possible_labels)
             classification.append((entry, label))
 
         # interate util convergance or max iterations
@@ -36,6 +36,7 @@ class KMeans():
         prev_classification = None
         while not self._check_converge(prev_classification, classification) and epoch < self.max_iter:
             self.logger.info('[Training] epoch: {}'.format(epoch))
+            self.centroids = []
             prev_classification = classification.copy()
             classification = []
 
@@ -80,11 +81,10 @@ class KMeans():
         amount_of_entries = 0
 
         for entry, current_label in observations:
-            if current_label != label:
-                break
+            if current_label == label:
+                centroid += entry
+                amount_of_entries += 1
 
-            centroid += entry
-            amount_of_entries += 1
         if amount_of_entries > 0:
             centroid /= amount_of_entries
         return centroid

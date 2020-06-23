@@ -5,7 +5,7 @@ from heapq import heappush, heappop, heapify
 import statistics
 import math
 import logging
-from internal_cluster import AbstractNode, TerminalNode
+from models.internal_cluster import AbstractNode, TerminalNode
 
 from scipy.cluster.hierarchy import dendrogram, linkage
 from matplotlib import pyplot as plt
@@ -14,20 +14,28 @@ from matplotlib import pyplot as plt
 
 class HierarchyTree():
     def __init__(self, logger, mode=None):
+        '''
+        Returns a new instance of HierarchyTree
+        Params:
+        - looger: class instace of 'logging' module compatible logger
+        - mode (str): one of ['max', 'min', 'avg', 'centroid']
+        '''
         self.logger = logger
         # strategy for cluster distance measurement
         self.mode = mode
         self.root = None
 
-    def fit(self, data):
+    def fit(self, data, labels=None):
         '''
         Train model based on the input dataset.
         Params:
         - data: numpy array of shape (None, dim)
+        - labels: ignored, just for api compliance
         '''
         # we initialize the algorithm with each entry as a dif group
         # groups is a list of tuples -> each tuples consist of (cluster center, [items])
         groups = []
+        self.root = None
         space_dim = data.shape[1]
         for row in data:
             groups.append(TerminalNode(row))
@@ -51,7 +59,7 @@ class HierarchyTree():
             self.logger.info('grouping clusters with disatnce {}'.format(distance))
 
             # create new node
-            new_group = AbstractNode()
+            new_group = AbstractNode(distance)
             new_group.add_sub_cluster(node_1)
             new_group.add_sub_cluster(node_2)
             # remove groups from existing grups
@@ -61,6 +69,15 @@ class HierarchyTree():
             groups.append(new_group)
 
         self.root = groups.pop()
+
+    def predict(self, data):
+        '''
+        Returns dendtrogram based on currentcategorization.
+        this method will simply fit a new dendrogram based on current data
+        and return that tree.
+        '''
+        self.fit(data)
+        return self.root
 
     def _calculate_cluster_distance(self, cluster_1, cluster_2):
         '''

@@ -6,12 +6,19 @@ import statsmodels.api as sm
 from sklearn import preprocessing
 from sklearn.metrics import confusion_matrix
 from sklearn.linear_model import LogisticRegression
+# for mesh grid view
+from matplotlib.collections import LineCollection
+from mpl_toolkits import mplot3d
 # for confusion matrix printing
 import seaborn as sns
 import matplotlib.pyplot as plt
+import logging
 
 from models.kmeans import KMeans
-import logging
+
+from models.kohonen import Kohonen
+
+from models.hierarchy_tree import HierarchyTree
 
 # configure logging library for timestamp format
 logging.basicConfig(
@@ -40,13 +47,28 @@ def complete_data(dataframe):
 
 def normalize_data(df):
     '''
-    Normalize dataframe values base on a min max normalization
+    Normalize dataframe values base on col level
     '''
     x = df.values #returns a numpy array
-    min_max_scaler = preprocessing.MinMaxScaler()
+    min_max_scaler = preprocessing.Normalizer()
     x_scaled = min_max_scaler.fit_transform(x)
     df = pd.DataFrame(x_scaled)
     return df
+
+def plot_grid(x, y, z, ax=None, **kwargs):
+    '''
+    Plot mesh grid for kohonen network results
+    Params:
+    - x: numpy
+    '''
+    ax = ax or plt.gca()
+    # segs1 = np.stack((x,y), axis=2)
+    # segs2 = segs1.transpose(1,0,2)
+    # ax.add_collection(LineCollection(segs1, **kwargs))
+    # ax.add_collection(LineCollection(segs2, **kwargs))
+    # ax.autoscale()
+    ax.plot_surface(x, y, z, **kwargs)
+
 
 def predict_logistic_regression(train_data, test_data, train_lables, test_labels):
     '''
@@ -166,13 +188,116 @@ if __name__ == '__main__':
     # predict_logistic_regression(train_data, test_data, train_labels, test_labels)
 
     # exercise d
-    # we add sex to variable
-    data = df[['sex', 'age', 'cad.dur', 'choleste']]
-    data = normalize_data(data)
-    data = data.to_numpy()
-    train_data, test_data, train_labels, test_labels = train_test_split(data, label, train_size=0.8)
+    # # we add sex to variable
+    # data = df[['sex', 'age', 'cad.dur', 'choleste']]
+    # data = normalize_data(data)
+    # data = data.to_numpy()
+    # train_data, test_data, train_labels, test_labels = train_test_split(data, label, train_size=0.8)
 
     # predict_logistic_regression(train_data, test_data, train_labels, test_labels)
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.scatter(test_data[:, 0], test_data[:, 1], test_data[:, 2], 'bo')
+    plt.show()
 
-    model = KMeans(2, logging)
+    # ====================
+        # KOHONEN
+    rows = 4
+    cols = 4
+    net = Kohonen(logging, (rows, cols, 3),
+                learning_method='linear',
+                radius_method='linear',
+                max_epochs=20)
+    net.fit(input_data=train_data)
+    output_net = net.predict(test_data)
+
+    # map output to classes and analyze each one
+    # for row in range(rows):
+    #     for col in range(cols):
+    #         # analize individual node
+    #         cluster_members = {}
+    #         cluster_size = 0
+    #         for idx in range(len(output_net)):
+    #             if output_net[idx] == (row, col):
+    #                 cluster_members[test_labels[idx]] = cluster_members.get(test_labels[idx], 0) + 1
+    #                 cluster_size += 1
+
+    #              # make piechart for each cluster
+    #         distribution = []
+    #         pie_labels = []
+    #         for key, value in cluster_members.items():
+    #             distribution.append(value / cluster_size)
+    #             pie_labels.append(key)
+    #         if cluster_size != 0 :
+    #             plt.pie(distribution, labels=pie_labels, autopct='%1.1f%%',
+    #             shadow=True, startangle=90)
+    #             plt.xlabel('Cluster composition (cluster size {})'.format(cluster_size))
+    #             plt.show()
+
+    # === how to plot mesh ====
+    grid_x = np.zeros((rows, cols))
+    grid_y = np.zeros((rows, cols))
+    grid_z = np.zeros((rows, cols))
+    for row in range(rows):
+        for col in range(cols):
+            grid_x[row, col] = net.net[row, col, 0]
+            grid_y[row, col] = net.net[row, col, 1]
+            grid_z[row, col] = net.net[row, col, 2]
+
+    fig, ax = plt.subplots()
+    ax = plt.axes(projection="3d")
+    plot_grid(grid_x, grid_y, grid_z, ax=ax, color="C0")
+    plt.show()
+    # ==== end plot ======
+
+    # ====================
+
+    # ====================
+        # HIERARCHY
+    # TODO: test in a less intensive dataset
+    model = HierarchyTree(logging, 'centroid')
+    # this model doesn't need fitting as it constructs a new dendrogram for any given input
+    dendrogram = model.predict(test_data)
+    # i only need 1 level of depth as
+    sub_clusters = dendrogram.get_data()
+
+    # ====================
+
+
+    # ===================
+        # KMEANS
+
+    n_clusteers = 2
+    model = KMeans(n_clusteers, logging, max_iter=300)
+
     model.fit(train_data, train_labels)
+
+    predictions = model.predict(test_data)
+
+    # we analyze the composition of each cluster
+    possible_labels = [0,1]
+    for cluster in range(n_clusteers):
+        cluster_members = {}
+        cluster_size = 0
+        for idx in range(len(predictions)):
+            # check if it's cluster member
+            if predictions[idx] == cluster:
+                # add real value
+                cluster_members[test_labels[idx]] = cluster_members.get(test_labels[idx], 0) + 1
+                cluster_size += 1
+        # make piechart for each cluster
+        distribution = []
+        pie_labels = []
+        for key, value in cluster_members.items():
+            distribution.append(value / cluster_size)
+            pie_labels.append(key)
+
+        plt.pie(distribution, labels=pie_labels, autopct='%1.1f%%',
+        shadow=True, startangle=90)
+        plt.xlabel('Cluster composition (cluster size {})'.format(cluster_size))
+        plt.show()
+
+
+
+    # plt.scatter(test_data)
+    # ===================

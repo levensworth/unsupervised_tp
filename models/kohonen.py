@@ -5,19 +5,24 @@ import models.utils.learning_rate_functions as lr_functions
 import models.utils.neighbourhood_functions as nh_functions
 import random
 class Kohonen:
-    def __init__(self, logger, map_shape, learning_rate=0.1, learning_method=None, radius_method=None, **kwargs):
+    def __init__(self, logger, map_shape, max_epochs=300, learning_rate=0.1,
+                learning_method=None, radius_method=None, **kwargs):
         '''
         Creates and initialize kohonen class network.
         Params:
         - logger: logging module compatuble class logger
         - map_shape (tuple): tuple of length 3 where each place represents (#_row, #_col, #_inputs)
+        - max_epochs (int): max_number of epochs, this is used for linear eta decay
+        - radius_method (str): can be one of ['exponential', 'linear', None]
+        - learning_method (str): can be one of ['exponential', 'linear', None]
         '''
         self.logger = logger
         self.net = np.random.random(map_shape)
+        self.max_epochs = max_epochs
         # set learning rate function and radius
         self.learning_rate_fun = self.select_learning_rate(learning_method, learning_rate, time_decay=kwargs.get('time_decay', 2))
         # note that this is a heuristic
-        radius_val = max(map_shape) / 2.0
+        radius_val = max(map_shape[:-1]) / 2.0
         self.radius_fun = self.select_radius_decay_fun(radius_method, radius_val, time_decay=kwargs.get('time_decay', 2))
         # setup neighbourhood function
         self.neighbourhood_fun = self.select_neighbourhood_fun(self.radius_fun)
@@ -37,6 +42,9 @@ class Kohonen:
             time_decay = kwargs['time_decay']
             return lr_functions.exponential_decay(learning_rate, time_decay)
 
+        if learning_method == 'linear':
+            return lr_functions.linear_decay(learning_rate, self.max_epochs)
+
         if learning_method == None:
             # if none, use default ... a constant value
             return lr_functions.constant(learning_rate)
@@ -51,9 +59,14 @@ class Kohonen:
         Returns:
         - Function with signature: (epoch) -> float
         '''
-        if radius_method == 'exponential' or radius_method == None:
+        if radius_method == 'exponential':
             time_decay = kwargs['time_decay']
             return nh_functions.exponential_decay(radius_val, time_decay)
+
+        if radius_method == 'linear' or radius_method == None:
+            return nh_functions.linear_decay(radius_val, self.max_epochs)
+
+        raise NotImplementedError
 
     def select_neighbourhood_fun(self, radius_func):
         '''
@@ -61,16 +74,17 @@ class Kohonen:
         Pramas:
         - radius_func: function with signature (distance, epoch) -> float
         '''
-        return lambda d, epoch: math.exp((- d **2)/(2 * radius_func(epoch)**2))
+        return lambda d, epoch: math.exp((- d *2)/(2 * radius_func(epoch)**2))
 
-    def fit(self, input_data, epochs=100):
+    def fit(self, input_data):
         '''
         Train a model based on the input information
         Params:
         - input_data: numpy array of shape (none, #_attributes)
         '''
-        for epoch in range(epochs):
+        for epoch in range(self.max_epochs):
             # loop over the input data
+            self.logger.info('[KOHONEN] training epoch {} ...'.format(epoch))
             for sample_vector in input_data:
                 # take a sample
                 # sample_vector = random.choice(input_data.tolist())
@@ -87,7 +101,7 @@ class Kohonen:
                 # update neighbours
                 self.net = self._update_net(self.net, neighbours, epoch)
 
-        self.logger.info('[Kohonen]: TRAINING COMPLETE! epochs: {}'.format(epochs))
+        self.logger.info('[Kohonen]: TRAINING COMPLETE! epochs: {}'.format(self.max_epochs))
 
     def _caculate_distances(self, input_vec, net):
         '''
@@ -125,6 +139,7 @@ class Kohonen:
         neighbours = []
         for neighbour in distances:
             radius = np.linalg.norm(np.array(bmu) - np.array(neighbour[2]))
+
             # check that is near enough
             if radius > current_radius:
                 break
@@ -134,7 +149,6 @@ class Kohonen:
             neighbours.append(neighbour)
 
         return neighbours
-
 
     def _update_net(self, net, neighbours, epoch):
         '''
@@ -153,8 +167,6 @@ class Kohonen:
             row, col = neighbour[2]
             net[row, col, :] += delta_weight
         return net
-
-
 
     def predict(self, input_data):
         '''
