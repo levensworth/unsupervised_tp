@@ -267,7 +267,7 @@ if __name__ == '__main__':
     # this model doesn't need fitting as it constructs a new dendrogram for any given input
     dendogram = model.predict(test_data)
     # i only need 1 level of depth as
-    sub_clusters = model.clusterize(dendogram, 1.0)
+    sub_clusters = model.clusterize(dendogram, dendogram.get_tag() - 1)
 
     for cluster in sub_clusters:
         # now we print each cluster composition
@@ -275,7 +275,7 @@ if __name__ == '__main__':
         pred = {}
         for node in cluster:
             # find test index
-            index = np.where(np.all(test_data==node,axis=1))[0]
+            index = np.where(np.all(test_data==node,axis=1))[0][0]
             label = test_labels[int(index)]
             pred[label] = pred.get(label, 0) + (1.0/cluster_size)
 
@@ -289,6 +289,7 @@ if __name__ == '__main__':
         shadow=True, startangle=90)
         plt.xlabel('Cluster composition (cluster size {})'.format(cluster_size))
         plt.show()
+
 
     # ====================
 
