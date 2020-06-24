@@ -182,7 +182,7 @@ if __name__ == '__main__':
 
     data = normalize_data(data)
     data = data.to_numpy()
-    train_data, test_data, train_labels, test_labels = train_test_split(data, label, train_size=0.8)
+    train_data, test_data, train_labels, test_labels = train_test_split(data, label, train_size=0.95)
 
     # exercise b
     # predict_logistic_regression(train_data, test_data, train_labels, test_labels)
@@ -195,22 +195,27 @@ if __name__ == '__main__':
     # train_data, test_data, train_labels, test_labels = train_test_split(data, label, train_size=0.8)
 
     # predict_logistic_regression(train_data, test_data, train_labels, test_labels)
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(test_data[:, 0], test_data[:, 1], test_data[:, 2], 'bo')
-    plt.show()
+
+    # ===== show 3d entry data =======
+    # fig = plt.figure()
+    # ax = fig.add_subplot(111, projection='3d')
+    # ax.scatter(test_data[:, 0], test_data[:, 1], test_data[:, 2], 'bo')
+    # plt.show()
+    # ================================
 
     # ====================
         # KOHONEN
+    '''
     rows = 4
     cols = 4
     net = Kohonen(logging, (rows, cols, 3),
                 learning_method='linear',
                 radius_method='linear',
-                max_epochs=20)
+                learning_rate=0.3,
+                max_epochs=200)
     net.fit(input_data=train_data)
     output_net = net.predict(test_data)
-
+    '''
     # map output to classes and analyze each one
     # for row in range(rows):
     #     for col in range(cols):
@@ -235,6 +240,7 @@ if __name__ == '__main__':
     #             plt.show()
 
     # === how to plot mesh ====
+    '''
     grid_x = np.zeros((rows, cols))
     grid_y = np.zeros((rows, cols))
     grid_z = np.zeros((rows, cols))
@@ -248,6 +254,8 @@ if __name__ == '__main__':
     ax = plt.axes(projection="3d")
     plot_grid(grid_x, grid_y, grid_z, ax=ax, color="C0")
     plt.show()
+    '''
+
     # ==== end plot ======
 
     # ====================
@@ -257,9 +265,30 @@ if __name__ == '__main__':
     # TODO: test in a less intensive dataset
     model = HierarchyTree(logging, 'centroid')
     # this model doesn't need fitting as it constructs a new dendrogram for any given input
-    dendrogram = model.predict(test_data)
+    dendogram = model.predict(test_data)
     # i only need 1 level of depth as
-    sub_clusters = dendrogram.get_data()
+    sub_clusters = model.clusterize(dendogram, 1.0)
+
+    for cluster in sub_clusters:
+        # now we print each cluster composition
+        cluster_size = len(cluster)
+        pred = {}
+        for node in cluster:
+            # find test index
+            index = np.where(np.all(test_data==node,axis=1))[0]
+            label = test_labels[int(index)]
+            pred[label] = pred.get(label, 0) + (1.0/cluster_size)
+
+        distribution = []
+        pie_labels = []
+        for key, value in pred.items():
+            distribution.append(value)
+            pie_labels.append(key)
+
+        plt.pie(distribution, labels=pie_labels, autopct='%1.1f%%',
+        shadow=True, startangle=90)
+        plt.xlabel('Cluster composition (cluster size {})'.format(cluster_size))
+        plt.show()
 
     # ====================
 

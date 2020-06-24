@@ -167,6 +167,31 @@ class HierarchyTree():
 
         return sum(distances) / len(distances)
 
+
+    def clusterize(self, root_node, max_distance):
+        '''
+        Returns clusters based on a given dendogram
+        Params:
+        - root_node: result of calling predict.
+        - n_clusters: number of clusters to create.
+        '''
+        clusters = []
+        if isinstance(root_node, TerminalNode):
+            return clusters
+
+        if root_node.get_tag() <= max_distance:
+            return [root_node.get_list_of_nodes()]
+
+        for sub_cluster in root_node.get_data():
+            if root_node.get_tag() > max_distance:
+                clusters += self.clusterize(sub_cluster, max_distance)
+            else:
+                clusters.append(sub_cluster.get_list_of_nodes())
+
+        return clusters
+
+
+
 if __name__ == '__main__':
     # X = [[i] for i in [2, 8, 0, 4, 1, 9, 9, 0]]
     X = np.array([

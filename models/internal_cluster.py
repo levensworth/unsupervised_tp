@@ -115,7 +115,14 @@ class AbstractNode(Cluster):
 
         return total
 
-
+    def get_list_of_nodes(self):
+        '''
+        Return a list of all subnodes and given distances
+        '''
+        sub_nodes = []
+        for node in self.sub_clusters:
+            sub_nodes += node.get_list_of_nodes()
+        return sub_nodes
 
 class TerminalNode(Cluster):
     '''
@@ -132,6 +139,9 @@ class TerminalNode(Cluster):
 
     def get_centroid(self):
         return self.data
+
+    def get_list_of_nodes(self):
+        return [self.data]
 
     def get_max_distance(self, value):
 
